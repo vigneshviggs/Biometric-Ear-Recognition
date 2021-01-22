@@ -9,12 +9,24 @@ Created on Mar 3 2018 11:35:25 2018
 import os,cv2
 import numpy as np
 import matplotlib.pyplot as plt
+import tensorflow as tf
+'''
+with tf.device('/gpu:0'):
+    a = tf.constant([1.0, 2.0, 3.0, 4.0, 5.0, 6.0], shape=[2, 3], name='a')
+    b = tf.constant([1.0, 2.0, 3.0, 4.0, 5.0, 6.0], shape=[3, 2], name='b')
+    c = tf.matmul(a, b)
+
+with tf.Session() as sess:
+    print (sess.run(c))
+'''
 
 from sklearn.utils import shuffle
-from sklearn.cross_validation import train_test_split
+from sklearn.model_selection import train_test_split
 
 from keras import backend as K
-K.set_image_dim_ordering('tf')
+#from tensorflow import Keras as K
+#K.set_image_data_format('tf')
+tf.keras.backend.set_image_data_format('channels_last')
 
 from keras.utils import np_utils
 from keras.models import Sequential
@@ -39,11 +51,11 @@ num_classes = 10
 
 img_data_list=[]
 
-for dataset in data_dir_list:
-	img_list=os.listdir(data_path+'\\'+ dataset)
-	print ('Loaded the images of dataset-'+'{}\n'.format(dataset))
-	for img in img_list:
-		input_img=cv2.imread(data_path + '\\'+ dataset + '\\'+ img )
+for image in data_dir_list:
+	img_list=os.listdir(data_path)
+	print ('Loaded the images of image-'+'{}\n'.format(image))
+	for bmp in img_list:
+		input_img=cv2.imread(data_path + '\\'+ bmp )
 		input_img=cv2.cvtColor(input_img, cv2.COLOR_BGR2GRAY)
 		input_img_resize=cv2.resize(input_img,(128,128))
 		img_data_list.append(input_img_resize)
@@ -54,15 +66,15 @@ img_data /= 255
 print (img_data.shape)
 
 if num_channel==1:
-	if K.image_dim_ordering()=='th':
+	if tf.keras.backend.image_data_format()=='th':
 		img_data= np.expand_dims(img_data, axis=1) 
 		print (img_data.shape)
 	else:
-		img_data= np.expand_dims(img_data, axis=4) 
+		img_data= np.expand_dims(img_data, axis=3) 
 		print (img_data.shape)
 		
 else:
-	if K.image_dim_ordering()=='th':
+	if K.backend.image_data_format()=='th':
 		img_data=np.rollaxis(img_data,3,1)
 		print (img_data.shape)
 		
@@ -123,13 +135,13 @@ if USE_SKLEARN_PREPROCESSING:
 # Assigning Labels
 
 # Define the number of classes
-num_classes = 11
+num_classes = 51
 
 num_of_samples = img_data.shape[0]
 labels = np.ones((num_of_samples,),dtype='int64')
 
 
-labels[0:120]=1
+'''labels[0:120]=1
 labels[120:240]=2
 labels[240:360]=3
 labels[360:480]=4
@@ -138,8 +150,58 @@ labels[600:720]=6
 labels[720:840]=7
 labels[840:960]=8
 labels[960:1080]=9
-labels[1080:1200]=10
+labels[1080:1200]=10 '''
 
+labels[0:6]=1
+labels[6:12]=2
+labels[12:16]=3
+labels[16:20]=4
+labels[20:23]=5
+labels[23:26]=6
+labels[26:29]=7
+labels[29:35]=8
+labels[35:40]=9
+labels[40:46]=10
+labels[46:49]=11
+labels[49:54]=12
+labels[54:60]=13
+labels[60:64]=14
+labels[64:68]=15
+labels[68:71]=16
+labels[71:74]=17
+labels[74:77]=18
+labels[77:80]=19
+labels[80:83]=20
+labels[83:86]=21
+labels[86:89]=22
+labels[89:93]=23
+labels[93:96]=24
+labels[96:99]=25
+labels[99:103]=26
+labels[103:106]=27
+labels[106:109]=28
+labels[109:112]=29
+labels[112:116]=30
+labels[116:120]=31
+labels[120:124]=32
+labels[124:127]=33
+labels[127:132]=34
+labels[132:135]=35
+labels[135:139]=36
+labels[139:143]=37
+labels[143:146]=38
+labels[146:150]=39
+labels[150:153]=40
+labels[153:156]=41
+labels[156:160]=42
+labels[160:163]=43
+labels[163:167]=44
+labels[167:170]=45
+labels[170:173]=46
+labels[173:177]=47
+labels[177:181]=48
+labels[181:184]=49
+labels[184:186]=50
 	  
 # convert class labels to on-hot encoding
 Y = np_utils.to_categorical(labels, num_classes)
@@ -155,7 +217,7 @@ input_shape=img_data[0].shape
 					
 model = Sequential()
 
-model.add(Convolution2D(32, 3,3,border_mode='same',input_shape=input_shape))
+model.add(Convolution2D(32, 3,strides=3,padding="valid",input_shape=input_shape))
 model.add(Activation('relu'))
 model.add(Convolution2D(32, 3, 3))
 model.add(Activation('relu'))
@@ -194,7 +256,7 @@ model.layers[0].trainable
 
 #%%
 # Training
-hist = model.fit(X_train, y_train, batch_size=16, nb_epoch=num_epoch, verbose=1, validation_data=(X_test, y_test))
+hist = model.fit(X_train, y_train, batch_size=16, epochs=num_epoch, verbose=1, validation_data=(X_test, y_test))
 #hist = model.fit(X_train, y_train, batch_size=32, nb_epoch=20,verbose=1, validation_split=0.2)
 print(num_epoch)
 # Training with callbacks
@@ -205,7 +267,7 @@ csv_log=callbacks.CSVLogger(filename, separator=',', append=False)
 
 early_stopping=callbacks.EarlyStopping(monitor='val_loss', min_delta=0, patience=0, verbose=0, mode='min')
 
-filepath="Best-weights-my_model-{epoch:03d}-{loss:.4f}-{acc:.4f}.hdf5"
+filepath="Best-weights-my_model-{epoch:03d}-{loss:.4f}-{accuracy:.4f}.hdf5"
 
 checkpoint = callbacks.ModelCheckpoint(filepath, monitor='val_loss', verbose=1, save_best_only=True, mode='min')
 
@@ -217,8 +279,8 @@ hist = model.fit(X_train, y_train, batch_size=16, nb_epoch=num_epoch, verbose=1,
 # visualizing losses and accuracy
 train_loss=hist.history['loss']
 val_loss=hist.history['val_loss']
-train_acc=hist.history['acc']
-val_acc=hist.history['val_acc']
+train_acc=hist.history['accuracy']
+val_acc=hist.history['val_accuracy']
 xc=range(200)
 
 plt.figure(1,figsize=(7,5))
